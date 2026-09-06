@@ -4780,7 +4780,7 @@ function VetLayout({ user, logout, setUser }) {
     </AppShell>
   );
 }
-function VetFarmersPage({ farmers, animals, t }) {
+function VetFarmersPage({ user, farmers, animals, t }) {
   const [selected, setSelected] = useState(null),
     [query, setQuery] = useState("");
   const safeFarmers = (farmers || []).filter(
@@ -4797,6 +4797,7 @@ function VetFarmersPage({ farmers, animals, t }) {
   if (selected)
     return (
       <VetAnimalDetail
+        user={user}
         animal={selected}
         t={t}
         onBack={() => setSelected(null)}
@@ -5027,8 +5028,14 @@ function VetRequests({ user, pending, t }) {
     </Page>
   );
 }
-function VetAnimalDetail({ animal, t, onBack }) {
+function VetAnimalDetail({ user, animal, t, onBack }) {
   useCloudVersion();
+  const [recommendation, setRecommendation] = useState("");
+  const [recommendationError, setRecommendationError] = useState("");
+  const [savingRecommendation, setSavingRecommendation] = useState(false);
+  const animalRecords = vetRecordsFor(user).filter(
+    (record) => record.animalId === animal.id && record.farmerId === animal.ownerId,
+  );
   const labs = (currentCache().labReports || [])
     .filter((r) => r && r.animalId === animal.id)
     .sort(
@@ -5037,6 +5044,49 @@ function VetAnimalDetail({ animal, t, onBack }) {
         new Date(a.updatedAt || a.createdAt || 0),
     );
   const history = safeHistory(animal);
+  const submitRecommendation = async (event) => {
+    event.preventDefault();
+    const text = recommendation.trim();
+    setRecommendationError("");
+    if (!text) {
+      setRecommendationError("Please enter a recommendation.");
+      return;
+    }
+    if (!animal.ownerId) {
+      setRecommendationError("This animal is not linked to a farmer.");
+      return;
+    }
+    setSavingRecommendation(true);
+    try {
+      await saveVetRecord(user, {
+        farmerId: animal.ownerId,
+        animalId: animal.id,
+        animalName: animal.name || "Animal",
+        animalTag: animal.tag || "",
+        instruction: text,
+      });
+      try {
+        await dispatchNotification({
+          recipientId: animal.ownerId,
+          title: `Veterinarian recommendation for ${animal.name || "Animal"}`,
+          body: text,
+          kind: "general",
+          data: {
+            type: "recommendation",
+            animalId: animal.id,
+            animalTag: animal.tag || "",
+            fromName: user.name || "Veterinarian",
+            path: "/vet",
+          },
+        });
+      } catch {}
+      setRecommendation("");
+    } catch (error) {
+      setRecommendationError(friendlyError(error));
+    } finally {
+      setSavingRecommendation(false);
+    }
+  };
   return (
     <Page
       title={`${animal.name || "Animal"} · ${animal.tag || "—"}`}
@@ -5136,6 +5186,41 @@ function VetAnimalDetail({ animal, t, onBack }) {
             )}
           </div>
         </div>
+      </section>
+      <section className="card">
+        <div className="section-title">
+          <div>
+            <h3>{t("recommendations")}</h3>
+            <small className="muted">{animal.name || "Animal"} · {animal.tag || "—"}</small>
+          </div>
+        </div>
+        <form onSubmit={submitRecommendation}>
+          <div className="field">
+            <label>Give recommendation</label>
+            <textarea
+              value={recommendation}
+              onChange={(event) => setRecommendation(event.target.value)}
+              placeholder="Write guidance for this animal's farmer"
+              rows="5"
+            />
+          </div>
+          {recommendationError && <div className="error">{recommendationError}</div>}
+          <button type="submit" className="primary" disabled={savingRecommendation}>
+            {savingRecommendation ? "Submitting..." : "Submit recommendation"}
+          </button>
+        </form>
+        {animalRecords.length > 0 && (
+          <div className="record-list">
+            {animalRecords
+              .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+              .map((record) => (
+                <div className="vet-record" key={record.id}>
+                  <small>{record.createdAt ? new Date(record.createdAt).toLocaleString() : ""}</small>
+                  <p>{record.instruction || record.report || "—"}</p>
+                </div>
+              ))}
+          </div>
+        )}
       </section>
       <section className="card">
         <div className="section-title">

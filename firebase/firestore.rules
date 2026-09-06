@@ -52,7 +52,7 @@ service cloud.firestore {
     }
     match /vetRecords/{recordId} {
       allow read: if signedIn() && (resource.data.farmerId == request.auth.uid || resource.data.vetId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.farmerId)));
-      allow create: if isVet() && connected(request.auth.uid, request.resource.data.farmerId) && request.resource.data.vetId == request.auth.uid;
+      allow create: if isVet() && connected(request.auth.uid, request.resource.data.farmerId) && request.resource.data.vetId == request.auth.uid && request.resource.data.animalId is string && get(/databases/$(database)/documents/animals/$(request.resource.data.animalId)).data.ownerId == request.resource.data.farmerId;
       allow update: if isVet() && resource.data.vetId == request.auth.uid;
       allow delete: if false;
     }
