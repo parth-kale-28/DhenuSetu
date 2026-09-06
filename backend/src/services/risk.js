@@ -1,0 +1,5 @@
+export function riskFromReading(a){
+ const has=['scc','temp','conductivity','pH','milk','activity','rumination'].some(k=>a[k]!==undefined&&a[k]!==null&&a[k]!=='');if(!has)return{risk:null,level:'Insufficient Data'};
+ const nums=[['temp',30,42],['milk',0,100],['scc',0,5000],['conductivity',0,20],['pH',0,14]];for(const[k,min,max]of nums){if(a[k]!==undefined&&a[k]!==null&&a[k]!==''&&(Number(a[k])<min||Number(a[k])>max))throw new Error(`${k} is outside the allowed range.`)}
+ let s=0;const scc=Number(a.scc),temp=Number(a.temp),ec=Number(a.conductivity),ph=Number(a.pH);if(Number.isFinite(scc)){if(scc>=500)s+=45;else if(scc>=310)s+=35;else if(scc>=200)s+=22;else if(scc>=150)s+=8;}if(Number.isFinite(temp)){if(temp>=40)s+=30;else if(temp>=39.5)s+=20;else if(temp>=39)s+=10;}if(Number.isFinite(ec)){if(ec>=7)s+=20;else if(ec>=6)s+=12;else if(ec>=5.5)s+=6;}if(Number.isFinite(ph)){if(ph<6||ph>7.2)s+=15;else if(ph<6.3||ph>7)s+=7;}if(a.activity==='Low')s+=10;else if(a.activity==='Reduced')s+=5;if(a.rumination==='Low')s+=10;else if(a.rumination==='Reduced')s+=5;s=Math.min(100,Math.round(s));return{risk:s,level:s>=70?'High':s>=40?'Moderate':s>=20?'Low':'No Risk'};
+}

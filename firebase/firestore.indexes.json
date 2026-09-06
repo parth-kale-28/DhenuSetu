@@ -1,0 +1,11 @@
+{
+  "indexes": [
+    {"collectionGroup":"animals","queryScope":"COLLECTION","fields":[{"fieldPath":"ownerId","order":"ASCENDING"},{"fieldPath":"updatedAt","order":"DESCENDING"}]},
+    {"collectionGroup":"labReports","queryScope":"COLLECTION","fields":[{"fieldPath":"farmerId","order":"ASCENDING"},{"fieldPath":"updatedAt","order":"DESCENDING"}]},
+    {"collectionGroup":"labReports","queryScope":"COLLECTION","fields":[{"fieldPath":"vetId","order":"ASCENDING"},{"fieldPath":"updatedAt","order":"DESCENDING"}]},
+    {"collectionGroup":"vetRecords","queryScope":"COLLECTION","fields":[{"fieldPath":"farmerId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
+    {"collectionGroup":"messages","queryScope":"COLLECTION","fields":[{"fieldPath":"toId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
+    {"collectionGroup":"notifications","queryScope":"COLLECTION","fields":[{"fieldPath":"userId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]}
+  ],
+  "fieldOverrides": []
+}

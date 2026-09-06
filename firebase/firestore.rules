@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userRole(uid) { return get(/databases/$(database)/documents/users/$(uid)).data.role; }
+    function pairId(a,b) { return a < b ? a + '__' + b : b + '__' + a; }
+    function connected(a,b) {
+      return signedIn() && exists(/databases/$(database)/documents/connections/$(pairId(a,b))) &&
+        get(/databases/$(database)/documents/connections/$(pairId(a,b))).data.status == 'approved';
+    }
+    function isOwn(uid) { return signedIn() && request.auth.uid == uid; }
+    function isVet() { return signedIn() && userRole(request.auth.uid) == 'Vet'; }
+    function isFarmer() { return signedIn() && userRole(request.auth.uid) == 'Farmer'; }
+
+    match /users/{uid} {
+      allow read: if isOwn(uid);
+      allow create, update: if isOwn(uid);
+      allow delete: if false;
+    }
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwn(uid);
+      allow update: if isOwn(uid) && request.resource.data.role == resource.data.role;
+      allow delete: if isOwn(uid);
+    }
+    match /animals/{animalId} {
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.ownerId)));
+      allow create: if isFarmer() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isFarmer() && resource.data.ownerId == request.auth.uid;
+    }
+    match /animalReadings/{readingId} {
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.ownerId)));
+      allow write: if false;
+    }
+    match /sensorReadings/{readingId} {
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.ownerId)));
+      allow write: if false;
+    }
+    match /environments/{environmentId} {
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.ownerId)));
+      allow create, update, delete: if isFarmer() && request.resource.data.ownerId == request.auth.uid;
+    }
+    match /hardware/{deviceId} {
+      allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.ownerId)));
+      allow create, update, delete: if isFarmer() && request.resource.data.ownerId == request.auth.uid;
+    }
+    match /connections/{connectionId} {
+      allow read: if signedIn() && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.fromId == request.auth.uid && request.resource.data.toId != request.auth.uid;
+      allow update: if signedIn() && resource.data.toId == request.auth.uid && request.resource.data.fromId == resource.data.fromId && request.resource.data.toId == resource.data.toId;
+      allow delete: if false;
+    }
+    match /vetRecords/{recordId} {
+      allow read: if signedIn() && (resource.data.farmerId == request.auth.uid || resource.data.vetId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.farmerId)));
+      allow create: if isVet() && connected(request.auth.uid, request.resource.data.farmerId) && request.resource.data.vetId == request.auth.uid;
+      allow update: if isVet() && resource.data.vetId == request.auth.uid;
+      allow delete: if false;
+    }
+    match /labReports/{reportId} {
+      allow read: if signedIn() && (resource.data.farmerId == request.auth.uid || resource.data.vetId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.farmerId)));
+      allow create: if isFarmer() && request.resource.data.farmerId == request.auth.uid;
+      allow update: if isVet() && resource.data.vetId == request.auth.uid || (isVet() && connected(request.auth.uid, resource.data.farmerId));
+      allow delete: if false;
+    }
+    match /messages/{messageId} {
+      allow read: if signedIn() && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.fromId == request.auth.uid && connected(request.auth.uid, request.resource.data.toId);
+      allow update, delete: if false;
+    }
+    match /notifications/{notificationId} {
+      allow read: if isOwn(resource.data.userId);
+      allow update: if isOwn(resource.data.userId);
+      allow create, delete: if false;
+    }
+    match /notificationTokens/{uid} {
+      allow read, write: if isOwn(uid);
+      match /tokens/{tokenId} { allow read, write: if isOwn(uid); }
+    }
+  }
+}
