@@ -2975,8 +2975,15 @@ function FarmerVetPage({ user, t }) {
           title: "Farmer connection request",
           body: `${user.name} wants to connect with you.`,
           kind: "connection",
-          data: { type: "connection", connectionId: c.id, fromName: user.name },
-          emailTemplate: "connection",
+          data: {
+            type: "connection",
+            connectionId: c.id,
+            fromName: user.name,
+            role: user.role,
+            profileId: user.profileId,
+            organization: user.farm || user.clinic || "",
+          },
+          emailTemplate: "connection-request",
         });
       } catch {}
       setCode("");
@@ -4952,8 +4959,15 @@ function VetConnectBox({ user, t }) {
           title: "Veterinarian connection request",
           body: `Dr. ${user.name} sent a connection request.`,
           kind: "connection",
-          data: { type: "connection", connectionId: c.id, fromName: user.name },
-          emailTemplate: "connection",
+          data: {
+            type: "connection",
+            connectionId: c.id,
+            fromName: user.name,
+            role: user.role,
+            profileId: user.profileId,
+            organization: user.farm || user.clinic || "",
+          },
+          emailTemplate: "connection-request",
         });
       } catch {}
     } catch (e) {
@@ -6032,6 +6046,11 @@ function App() {
         stop();
       } catch {}
     };
+  }, [user]);
+  useEffect(() => {
+    if (!user || !firebaseConfigured || typeof Notification === "undefined") return;
+    if (Notification.permission !== "default") return;
+    registerPushNotifications().catch(() => {});
   }, [user]);
   const logout = async () => {
     await signOut(auth);
